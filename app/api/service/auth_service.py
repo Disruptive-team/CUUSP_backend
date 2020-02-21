@@ -2,7 +2,7 @@
 对数据库操作的简单封装
 """
 from app.models import WechatBind, Student
-from app import db_wrapper
+from app import db_wrapper, logger
 from app.utils.ret_util import RoleStatus
 
 
@@ -24,12 +24,8 @@ def bind_wx(open_id, secret_key):
 
 
 def change_user_info_wx(open_id, **kwargs):
-    """
-    修改微信用户资料
-    :param open_id: str
-    :param kwargs: dict
-    :return:
-    """
+    # 修改微信用户资料
+
     with db_wrapper.database.atomic():
         wx_user = WechatBind.select().where(WechatBind.open_id == open_id).get()
         wx_user.avatar_url = kwargs.get("avatar_url")
@@ -37,26 +33,69 @@ def change_user_info_wx(open_id, **kwargs):
         wx_user.city = kwargs.get("city")
         wx_user.country = kwargs.get("country")
         wx_user.gender = kwargs.get("gender")
-        return wx_user.save()
+        affect_row = wx_user.save()
+        if affect_row != 1:
+            return None
+        else:
+            return affect_row
 
 
 def get_role_wx(wx_id):
-    """
-    获取微信用户的权限
-    :param wx_id: int
-    :return:
-    """
+    # 获取微信用户的权限
+
     with db_wrapper.database.atomic():
-        user = Student.get_or_none(Student.we == wx_id)
-        if user is None:
-            return RoleStatus.WX_Visitor.value
+        wx_user = WechatBind.get_or_none(WechatBind.we_id == wx_id)
+        if wx_user:
+            return wx_user.permission
         else:
-            return RoleStatus.WX_Auth.value
+            return None
 
-def get_open_id_wx(role_id,we_id):
-    if role_id in [RoleStatus.WX_Visitor.value,RoleStatus.WX_Auth.value]:
-        with db_wrapper.database.atomic():
-            data = WechatBind.get_or_none(WechatBind.we_id==we_id)
-            if data is not None:
-                return data.open_id
 
+def get_open_id_wx(role_id, we_id):
+    # 获取微信openid
+    with db_wrapper.database.atomic():
+        if role_id in [RoleStatus.WX_Visitor.value, RoleStatus.WX_Auth.value]:
+            with db_wrapper.database.atomic():
+                data = WechatBind.get_or_none(WechatBind.we_id == we_id)
+                if data is not None:
+                    return data.open_id
+                else:
+                    return None
+
+
+def wxAddNewUser(student_number, password, we_id):
+    # 增加微信绑定
+    with db_wrapper.database.atomic():
+        stu = Student()
+        stu.student_number = student_number
+        stu.password = password
+        stu.save()
+        affect_row = WechatBind.update(student=stu.s_id).where(WechatBind.we_id == we_id).execute()
+        if affect_row != 1:
+            return None
+        else:
+            return affect_row
+
+
+def updateUserPermission(we_id, role):
+    # 更新微信用户的权限
+
+    with db_wrapper.database.atomic():
+        wx_user = WechatBind.get_or_none(WechatBind.we_id == we_id)
+        wx_user.permission = role
+        affect_row = wx_user.save()
+        logger.debug(f"更新微信用户的权限影响的行数为{affect_row}")
+        if affect_row != 1:
+            return None
+        else:
+            return affect_row
+
+
+def queryUserRole(we_id):
+    # 查询微信用户的权限
+    with db_wrapper.database.atomic():
+        wx_user = WechatBind.get_or_none(WechatBind.we_id == we_id)
+        if wx_user:
+            return wx_user.permission
+        else:
+            return None
