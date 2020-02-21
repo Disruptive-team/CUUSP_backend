@@ -2,7 +2,7 @@ import datetime
 import os
 
 import jwt
-from .resp_code_util import RespStatus
+from .builtin_code_util import RespStatus
 
 
 class FlaskJWT():

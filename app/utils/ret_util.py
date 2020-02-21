@@ -36,6 +36,13 @@ class RespStatus(Enum):
     # 认证相关 02
     Auth_WX_Error = 400201
 
+    # 数据库相关 03
+    InsertError = 400301
+    UpdateError = 400302
+    QueryError = 400303
+    DeleteError = 400304
+    DataBaseError = 400305
+
     # 其它 99
     ReqDataNotJSON = 409901
     LackArgs = 409902

@@ -1,5 +1,6 @@
 from app import jwt_util
-from .resp_code_util import RespStatus
+from .builtin_code_util import RespStatus
+
 
 def check_args(**kwargs) -> tuple:
     args_list = []
@@ -14,6 +15,4 @@ def check_args(**kwargs) -> tuple:
 
 def get_data_by_jwt(request):
     jwt = request.headers.get("Authorization")
-    if jwt is None:
-        return RespStatus.LackAuthorizationHeader
     return jwt_util.decode_auth_token(jwt)

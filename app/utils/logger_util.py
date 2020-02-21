@@ -19,7 +19,10 @@ class Logger():
         if self._app is None:
             self._app = app
         self._check_env()
-        self._logger.remove(0)
+        try:
+            self._logger.remove(0)
+        except Exception as e:
+            pass
         if self._env == "development":
             self._init_dev()
         else:
