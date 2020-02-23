@@ -1,14 +1,14 @@
 """
 微服务模块，提供微服务认证,微服务使用
 """
-from flask import request
+from flask import request, g
 
 from app import logger
 from app.utils.ret_util import response, RespStatus
 from . import api, json_required, auth_token_required
 from .service.ms_service import get_all_ms, reg_ms, get_u_number_pwd, get_key_iv_by_appid
 from ..utils.crypto_util import AES256CBC
-from ..utils.req_util import check_args, get_data_by_jwt
+from ..utils.req_util import check_args
 
 
 @api.route('/ms/getAll', methods=['GET'])
@@ -68,23 +68,28 @@ def getUserSecret():
     lack, lack_msg = check_args(verify=verify, appid=appid)
     if not lack:
         return response(code=RespStatus.LackArgs.value, msg=lack_msg)
-    logger.debug(f"微服务Post data:{data}")
+    logger.debug(f"微服务请请求的数据为:{data}")
 
     # 检查是否一样
     key_iv = get_key_iv_by_appid(appid)
+    if key_iv is None:
+        return response(403,msg="未认证的微服务!"),403
     key = key_iv['key'].encode()
     iv = key_iv['iv'].encode()
     f = AES256CBC(key, iv)
     de_appid = f.decrypt(verify.encode())
-    logger.debug(f"appid: {appid} de_appid:{de_appid}")
     if de_appid != appid:
+        logger.debug(f"微服务appid权限认证出错")
         return response(code=RespStatus.Forbidden.value, msg='verify error!')
 
-    jwt_data = get_data_by_jwt(request)
+    auth_token = g.get("auth_token")
+    open_id = auth_token['data'].get("uid")
+    role = auth_token['data'].get("role")
+    logger.debug(f"通过g获取了auth_token:{auth_token}")
 
-    user_info = get_u_number_pwd(*[x for x in jwt_data.get("data").values()])
+    user_info = get_u_number_pwd(role,open_id)
     if user_info is None:
-        return response(code=RespStatus.QueryError.value, msg="获取用户信息失败")
+        return response(code=RespStatus.QueryError.value, msg="获取用户信息失败,可能是还没有绑定学号")
     logger.debug(f"查询到用户名和密码{user_info}")
     # 加密用户名和密码
     c = AES256CBC(key, iv)
