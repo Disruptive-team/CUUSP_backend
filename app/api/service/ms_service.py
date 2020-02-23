@@ -45,12 +45,12 @@ def reg_ms(link, name, img_url):
             return {'id': ms_id, "key": key.decode(), "iv": iv.decode(), "appid": appid}
 
 
-def get_u_number_pwd(role_id, we_id):
+def get_u_number_pwd(role, open_id):
     # 获取学号密码，通过role_id和we_id
-    if role_id in [RoleStatus.WX_Auth.value]:
+    if role in [RoleStatus.WX_Auth.value]:
         with db_wrapper.database.atomic():
             query = WechatBind.select(Student.student_number, Student.password).join(Student).where(
-                (WechatBind.student == Student.s_id) & (WechatBind.we_id == we_id)).dicts()
+                (WechatBind.student == Student.s_id) & (WechatBind.open_id == open_id)).dicts()
             if query.count() != 0:
                 return query.get()
             else:
